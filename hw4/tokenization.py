@@ -34,7 +34,14 @@ def get_pairs(word_freq_dict):
         #  for each neighboring token pair `tokens[i], tokens[i+1]`, add their frequency to `pairs`
         # note: in the beginning, tokens == characters; however, later they will grow bigger than characters
         # pairs is a dictionary with tuple of token pairs as keys and their frequency as values
-
+        tokens = word.split(" ")
+        for i, t in enumerate(tokens):
+            if (i+1) >= len(tokens):
+                break
+            pair = (tokens[i], tokens[i+1])
+            if pair not in pairs:
+                pairs[pair] = 0
+            pairs[pair] += freq
         # your code ends here
     return pairs
 
@@ -106,7 +113,7 @@ def formatted_print_subwords(subwords: set, chunk_size=5):
         print(subword, end=el)
     print()
 
-def exract_bpe_subwords(text, steps):
+def extract_bpe_subwords(text, steps):
     # split the text on spaces to get the list of words
     words = text.split(" ")
 
@@ -123,16 +130,18 @@ def exract_bpe_subwords(text, steps):
         # - you can use the functions you implemented and provided above
         # - should not be more than 3 lines
         # extract token pairs and their frequency
-
+        pairs = get_pairs(word_freq_dict)
 
         # find the most frequent token pair
-
+        best_pair = get_most_frequent_pair(pairs)
 
         # merge the token pair with highest frequency
+        word_freq_dict = merge_byte_pairs(best_pair, word_freq_dict)
 
         # your code ends here
 
         # extract the subwords for visualizing them
+        subword_tokens = get_subword_tokens(word_freq_dict)
 
 
         print_interval = int(steps / 5)  # show 5 prints
@@ -147,7 +156,7 @@ def exract_bpe_subwords(text, steps):
 
 def test_bpe():
     print(f"{'-' * 10} Test BPE Tokenization {'-' * 10}")
-    subwords = exract_bpe_subwords("Hopkins Hopkins Hopkins JHU JHU Hops Hops", 10)
+    subwords = extract_bpe_subwords("Hopkins Hopkins Hopkins JHU JHU Hops Hops", 10)
     print(f"Final subword tokens: {subwords}")
     print(subwords)
     assert len(subwords.difference({'Hopkins</w>', 's</w>', 'Hop', 'JHU</w>'})) == 0
@@ -165,6 +174,6 @@ def bpe_on_wikitext():
     print(f"Text of the subset (last 5000 examples): {text}")
     print(text)
 
-    subwords = exract_bpe_subwords(text, 2000)
+    subwords = extract_bpe_subwords(text, 2000)
     print(f"Final Subword tokens")
     formatted_print_subwords(subwords, chunk_size=20)

@@ -53,9 +53,14 @@ def preprocess_data(data, local_window_size, splitter, tokenizer):
                     # have already traversed all of the sentence
                     break
 
-                # TODO: Select a subset of token_ids from idx -> idx + local_window_size as input and put it to x
+                # TODO: 
                 # Select a subset of token_ids from idx -> idx + local_window_size as input and put it to x: list of context token_ids
+                x = token_ids[idx:idx+local_window_size]
                 # Then select the word immediately after this window as output and put it to y: the target next token_id
+                y = token_ids[idx+local_window_size]
+
+                x_data.append(x)
+                y_data.append(y)
 
     # making tensors
     x_data = torch.LongTensor(x_data)
@@ -79,14 +84,19 @@ class NPLMFirstBlock(nn.Module):
     def forward(self, inputs):
         # TODO: implement the forward pass
         # looking up the word embeddings from self.embeddings()
+        embeds = self.embeddings(inputs)
         # And concatenating them
+        input_embeddings = embeds.view(embeds.size(0), -1)
         # Note this is done for a batch of instances.
 
         # Transform embeddings with a linear layer and tanh activation
+        h = torch.tanh(self.linear(input_embeddings))
 
         # apply layer normalization
+        h = self.layer_norm(h)
 
         # apply dropout
+        final_embeds = self.dropout(h)
         # your code ends here
 
         return final_embeds
@@ -104,12 +114,16 @@ class NPLMBlock(nn.Module):
     def forward(self, inputs):
         # TODO: implement the forward pass
         # apply linear transformation and tanh activation
+        h = torch.tanh(self.linear(inputs))
 
         # add residual connection
+        h = inputs + h
 
         # apply layer normalization
+        h = self.layer_norm(h)
 
         # apply dropout
+        final_inputs = self.dropout(h)
 
         # your code ends here
 
@@ -125,9 +139,10 @@ class NPLMFinalBlock(nn.Module):
     def forward(self, inputs):
         # TODO: implement the forward pass
         # apply linear transformation
-
+        h = self.linear(inputs)
 
         # apply log_softmax to get log-probabilities (logits)
+        log_probs = F.log_softmax(h, dim=1)
 
         # your code ends here
 
@@ -143,6 +158,8 @@ class NPLM(nn.Module):
         self.intermediate_layers = nn.ModuleList()
 
         # TODO: create num_blocks of NPLMBlock as intermediate layers
+        for _ in range(num_blocks):
+            self.intermediate_layers.append(NPLMBlock(hidden_dim, dropout_p))
 
         # your code ends here
 
@@ -151,13 +168,15 @@ class NPLM(nn.Module):
     def forward(self, inputs):
         # TODO: implement the forward pass
         # input layer
-
+        h = self.first_layer(inputs)
 
         # multiple middle layers
         # remember to apply the ReLU activation function after each layer
-
+        for layer in self.intermediate_layers:
+            h = torch.relu(layer(h))
 
         # output layer
+        log_probs = self.final_layer(h)
 
         # your code ends here
 
@@ -204,10 +223,12 @@ def train(model, train_dataloader, dev_dataloader, criterion, optimizer, schedul
             # TODO extract perplexity
             # remember the connection between perplexity and cross-entropy loss
             # name the perplexity result as 'ppl'
+            ppl = torch.exp(loss)
 
 
             # backward pass and update gradient
-
+            loss.backward()
+            optimizer.step()
 
             train_losses.append(loss.item())
             train_ppls.append(ppl.item())
@@ -250,7 +271,7 @@ def evaluate(model, eval_dataloader, criterion):
     avg_loss = loss / count
     # TODO: compute perplexity
     # name the perplexity result as 'avg_ppl'
-
+    avg_ppl = torch.exp(avg_loss)
     return avg_loss, avg_ppl
 
 
